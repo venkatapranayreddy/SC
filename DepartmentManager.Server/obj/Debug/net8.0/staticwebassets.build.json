@@ -1,0 +1,24 @@
+{
+  "Version": 1,
+  "Hash": "KuslVc3LyWgS5A3IZ5flM0suXkBqQ9X/IXyOQltqQcc=",
+  "Source": "DepartmentManager.Server",
+  "BasePath": "_content/DepartmentManager.Server",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [
+    {
+      "Identity": "/Users/pranayreddy/Documents/GitHub/SC/SC/departmentmanager.client/departmentmanager.client.esproj",
+      "Version": 2,
+      "Source": "departmentmanager.client",
+      "GetPublishAssetsTargets": "GetCurrentProjectPublishStaticWebAssetItems",
+      "AdditionalPublishProperties": "",
+      "AdditionalPublishPropertiesToRemove": "WebPublishProfileFile;TargetFramework;RuntimeIdentifier;SelfContained",
+      "GetBuildAssetsTargets": "GetCurrentProjectBuildStaticWebAssetItems",
+      "AdditionalBuildProperties": "",
+      "AdditionalBuildPropertiesToRemove": "WebPublishProfileFile;TargetFramework;RuntimeIdentifier;SelfContained"
+    }
+  ],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

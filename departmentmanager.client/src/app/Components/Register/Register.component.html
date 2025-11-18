@@ -1,0 +1,225 @@
+<div class="register-wrapper">
+  <section class="hero">
+    <p class="eyebrow">Member Registration</p>
+    <h1>Street Cause Member Onboarding</h1>
+    <p class="subtitle">
+      Choose how you want to register. You can start with Google single sign-on and finish the profile,
+      or fill out every detail manually. Every field is mandatory to activate your affiliation account.
+    </p>
+  </section>
+
+  <section class="mode-cards" *ngIf="!registrationMode()">
+    <article class="mode-card" (click)="onSelectMode('google')" tabindex="0">
+      <div class="mode-card__icon google"></div>
+      <h2>Sign Up With Google</h2>
+      <p>Authenticate with Google OAuth 2.0 and finish the remaining member details with your name and email prefilled.</p>
+      <button type="button" class="btn primary">Continue with Google</button>
+    </article>
+
+    <article class="mode-card" (click)="onSelectMode('form')" tabindex="0">
+      <div class="mode-card__icon form"></div>
+      <h2>Sign Up With Fill Out</h2>
+      <p>Complete the entire form manually. Use an organisation email (Gmail addresses are not allowed in this path).</p>
+      <button type="button" class="btn secondary">Fill out the form</button>
+    </article>
+  </section>
+
+  <section class="registration-form" *ngIf="registrationMode()">
+    <div class="mode-banner">
+      <div>
+        <h2>Complete Your Profile</h2>
+        <p *ngIf="registrationMode() === 'google'">
+          You signed up with Google OAuth 2.0. Full name and email are locked to what Google returned.
+        </p>
+        <p *ngIf="registrationMode() === 'form'">
+          Enter every detail manually. Make sure the email does not end with <code>@gmail.com</code>.
+        </p>
+      </div>
+      <button type="button" class="btn ghost" (click)="resetMode()">Change option</button>
+    </div>
+
+    <form [formGroup]="registrationForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="field-grid">
+        <label>
+          Full Name
+          <input
+            type="text"
+            formControlName="fullName"
+            [class.invalid]="fullNameControl?.invalid && fullNameControl?.touched"
+            placeholder="Your full legal name"
+          />
+          <small *ngIf="fullNameControl?.invalid && fullNameControl?.touched">Full name is required.</small>
+        </label>
+
+        <label>
+          Email ID
+          <input
+            type="email"
+            formControlName="email"
+            [class.invalid]="emailControl?.invalid && emailControl?.touched"
+            placeholder="name@streetcause.org"
+          />
+          <small *ngIf="emailControl?.hasError('required') && emailControl?.touched">Email is required.</small>
+          <small *ngIf="emailControl?.hasError('email') && emailControl?.touched">Enter a valid email address.</small>
+          <small *ngIf="emailControl?.hasError('gmailAddressNotAllowed') && emailControl?.touched">
+            Gmail addresses are not allowed when filling out manually.
+          </small>
+        </label>
+
+        <label>
+          Phone Number
+          <input
+            type="tel"
+            formControlName="phoneNumber"
+            maxlength="10"
+            placeholder="10 digit mobile number"
+            [class.invalid]="registrationForm.get('phoneNumber')?.invalid && registrationForm.get('phoneNumber')?.touched"
+          />
+          <small *ngIf="registrationForm.get('phoneNumber')?.invalid && registrationForm.get('phoneNumber')?.touched">
+            Enter a valid 10 digit number.
+          </small>
+        </label>
+
+        <label>
+          City
+          <select formControlName="city" [class.invalid]="registrationForm.get('city')?.invalid && registrationForm.get('city')?.touched">
+            <option value="">Select City</option>
+            <option *ngFor="let city of cities" [value]="city.id">{{ city.name }}</option>
+          </select>
+          <small *ngIf="registrationForm.get('city')?.invalid && registrationForm.get('city')?.touched">
+            Select the city you are registering under.
+          </small>
+        </label>
+
+        <label>
+          Affiliation
+          <select
+            formControlName="affiliation"
+            [disabled]="!selectedCity()"
+            [class.invalid]="registrationForm.get('affiliation')?.invalid && registrationForm.get('affiliation')?.touched"
+          >
+            <option value="">Select Affiliation</option>
+            <option *ngFor="let affiliation of affiliationOptions()" [value]="affiliation.id">
+              {{ affiliation.name }}
+            </option>
+          </select>
+          <small *ngIf="!selectedCity()">Select a city to view affiliations.</small>
+          <small
+            *ngIf="
+              selectedCity() &&
+              registrationForm.get('affiliation')?.invalid &&
+              registrationForm.get('affiliation')?.touched
+            "
+          >
+            Choose the affiliation you belong to.
+          </small>
+        </label>
+
+        <label>
+          Role
+          <select formControlName="role" [class.invalid]="registrationForm.get('role')?.invalid && registrationForm.get('role')?.touched">
+            <option value="">Select Role</option>
+            <option *ngFor="let role of roles" [value]="role.id">{{ role.label }}</option>
+          </select>
+          <small *ngIf="registrationForm.get('role')?.invalid && registrationForm.get('role')?.touched">
+            Select the role you will perform.
+          </small>
+        </label>
+
+        <label>
+          Approver
+          <select
+            formControlName="approver"
+            [disabled]="!selectedAffiliation()"
+            [class.invalid]="registrationForm.get('approver')?.invalid && registrationForm.get('approver')?.touched"
+          >
+            <option value="">Select Approver</option>
+            <option *ngFor="let approver of approverOptions()" [value]="approver.id">
+              {{ approver.name }} &mdash; Manager: {{ approver.manager }}
+            </option>
+          </select>
+          <small *ngIf="!selectedAffiliation()">Select an affiliation to see available approvers.</small>
+          <small
+            *ngIf="
+              selectedAffiliation() &&
+              registrationForm.get('approver')?.invalid &&
+              registrationForm.get('approver')?.touched
+            "
+          >
+            You must select an approver for workflow routing.
+          </small>
+        </label>
+
+        <label>
+          Govt ID
+          <input
+            type="text"
+            formControlName="govtId"
+            placeholder="Aadhaar / PAN / Govt issued ID"
+            [class.invalid]="registrationForm.get('govtId')?.invalid && registrationForm.get('govtId')?.touched"
+          />
+          <small *ngIf="registrationForm.get('govtId')?.invalid && registrationForm.get('govtId')?.touched">
+            Provide a valid government ID reference.
+          </small>
+        </label>
+
+        <label class="file-field">
+          Profile Picture
+          <input type="file" accept="image/*" (change)="onFileChange($event, 'profilePicture')" />
+          <span class="file-name">
+            {{ registrationForm.get('profilePicture')?.value?.name || 'Upload a recent photograph' }}
+          </span>
+          <small *ngIf="registrationForm.get('profilePicture')?.invalid && registrationForm.get('profilePicture')?.touched">
+            Profile picture is required.
+          </small>
+        </label>
+
+        <label class="textarea-field">
+          Address
+          <textarea
+            rows="3"
+            formControlName="address"
+            placeholder="Complete postal address"
+            [class.invalid]="registrationForm.get('address')?.invalid && registrationForm.get('address')?.touched"
+          ></textarea>
+          <small *ngIf="registrationForm.get('address')?.invalid && registrationForm.get('address')?.touched">
+            Address should be at least 10 characters.
+          </small>
+        </label>
+
+        <label class="file-field">
+          Digital Signature
+          <input type="file" accept="image/*,.png,.jpg,.jpeg,.webp" (change)="onFileChange($event, 'digitalSignature')" />
+          <span class="file-name">
+            {{ registrationForm.get('digitalSignature')?.value?.name || 'Upload your e-signature' }}
+          </span>
+          <small *ngIf="registrationForm.get('digitalSignature')?.invalid && registrationForm.get('digitalSignature')?.touched">
+            Digital signature is required.
+          </small>
+        </label>
+      </div>
+
+      <label class="terms">
+        <input type="checkbox" formControlName="termsAccepted" />
+        <span>
+          I accept the Street Cause Terms & Conditions and understand the approval workflow
+          (Approver → Approver's Manager) before my affiliation account is activated.
+        </span>
+      </label>
+      <small *ngIf="registrationForm.get('termsAccepted')?.invalid && registrationForm.get('termsAccepted')?.touched">
+        You must accept the terms to continue.
+      </small>
+
+      <div class="form-footer">
+        <p>
+          After submission you'll receive updates when your approver reviews the request. Once the manager approves,
+          you'll get your Member ID (or see your existing affiliations) and can access the dashboard. If pending, you'll
+          see “Account is not yet Activated” on login.
+        </p>
+        <button type="submit" class="btn primary" [disabled]="isSubmitting()">
+          {{ isSubmitting() ? 'Submitting...' : 'Submit Registration' }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>

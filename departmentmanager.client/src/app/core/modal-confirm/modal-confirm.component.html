@@ -1,0 +1,16 @@
+<div class="modal-header">
+  <h4 class="modal-title pull-left">{{ modalMessage.title }}</h4>
+  <button type="button" class="btn-close close pull-right" aria-label="Close" (click)="deny()">
+    <span aria-hidden="true" class="visually-hidden">&times;</span>
+  </button>
+</div>
+<div class="modal-body">
+  <span>
+    {{ modalMessage.message }}
+  </span>
+
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-secondary" style="width: 6rem;" (click)="confirm()">Yes</button>
+  <button type="button" class="btn btn-outline-secondary" style="width: 6rem;" (click)="deny()">No</button>
+</div>
