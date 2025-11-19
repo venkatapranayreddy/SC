@@ -64,6 +64,12 @@ artifacts/
 # Entity Framework Migrations (uncomment if you want to ignore migrations)
 # Migrations/
 
+# Explicit patterns for build output folders
+**/obj/Debug/
+**/obj/Release/
+DepartmentManager.Server/obj/
+DepartmentManager.Server/bin/
+
 ## Angular / Node.js ##
 # Dependencies
 node_modules/
