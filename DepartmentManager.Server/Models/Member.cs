@@ -21,7 +21,6 @@ namespace DepartmentManager.Server.Models
         // Foreign Key → City
         [Required]
         public int CityId { get; set; }
-        [ForeignKey("CityId")]
         public City City { get; set; }
 
         // Foreign Key → Affiliation
