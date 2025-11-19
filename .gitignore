@@ -69,6 +69,8 @@ artifacts/
 **/obj/Release/
 DepartmentManager.Server/obj/
 DepartmentManager.Server/bin/
+departmentmanager.client/obj/
+departmentmanager.client/bin/
 
 ## Angular / Node.js ##
 # Dependencies
