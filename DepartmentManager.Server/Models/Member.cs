@@ -1,61 +1,50 @@
-using System;
+using DepartmentManager.Server.Models;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
-namespace DepartmentManager.Server.Models
+public class Member
 {
-    public class Member
-    {
-          [Key]
-        public int MemberId { get; set; }
+    [Key]
+    public int MemberId { get; set; }
 
-        [Required, StringLength(100)]
-        public string FullName { get; set; }
+    [Required, StringLength(100)]
+    public string FullName { get; set; }
 
-        [Required, EmailAddress, StringLength(150)]
-        public string Email { get; set; }
+    [Required, EmailAddress, StringLength(150)]
+    public string Email { get; set; }
 
-        [Phone, StringLength(20)]
-        public string PhoneNumber { get; set; }
+    [Required, Phone, StringLength(20)]
+    public string PhoneNumber { get; set; }
 
-        // Foreign Key → City
-        [Required]
-        public int CityId { get; set; }
-        public City City { get; set; }
+    [Required]
+    public int CityId { get; set; }
+    public virtual City City { get; set; }
 
-        // Foreign Key → Affiliation
-        [Required]
-        public int AffiliationId { get; set; }
-        [ForeignKey("AffiliationId")]
-        public Affiliation Affiliation { get; set; }
+    [Required]
+    public int AffiliationId { get; set; }
+    public virtual Affiliation Affiliation { get; set; }
 
-        // Foreign Key → Role
-        [Required]
-        public int RoleId { get; set; }
-        [ForeignKey("RoleId")]
-        public Role Role { get; set; }
+    [Required]
+    public int RoleId { get; set; }
+    public virtual Role Role { get; set; }
 
-        // ✅ Self-referencing Approver
-        public int? ApproverId { get; set; }
-        [ForeignKey("ApproverId")]
-        public Member Approver { get; set; }
+    public int? ApproverId { get; set; }
+    public virtual Member Approver { get; set; }
 
-        [StringLength(50)]
-        public string GovtId { get; set; }
+    [Required, StringLength(50)]
+    public string GovtId { get; set; }
 
-        public string ProfilePictureUrl { get; set; }
+    [Required]
+    public string ProfilePictureUrl { get; set; }
 
-        [StringLength(300)]
-        public string Address { get; set; }
+    [Required, StringLength(300)]
+    public string Address { get; set; }
 
-        public string DigitalSignatureUrl { get; set; }
+    [Required]
+    public string DigitalSignatureUrl { get; set; }
 
-        [Required]
-        public bool AcceptTermsAndConditions { get; set; }
+    [Required]
+    public bool AcceptTermsAndConditions { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime? UpdatedAt { get; set; }
-    }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
 }
-
-

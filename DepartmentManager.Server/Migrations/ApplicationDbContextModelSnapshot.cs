@@ -43,20 +43,6 @@ namespace DepartmentManager.Server.Migrations
                     b.HasIndex("CityId");
 
                     b.ToTable("Affiliations");
-
-                    b.HasData(
-                        new
-                        {
-                            AffiliationId = 1,
-                            CityId = 1,
-                            Name = "Affiliation A"
-                        },
-                        new
-                        {
-                            AffiliationId = 2,
-                            CityId = 2,
-                            Name = "Affiliation B"
-                        });
                 });
 
             modelBuilder.Entity("DepartmentManager.Server.Models.City", b =>
@@ -75,21 +61,35 @@ namespace DepartmentManager.Server.Migrations
                     b.HasKey("CityId");
 
                     b.ToTable("Cities");
-
-                    b.HasData(
-                        new
-                        {
-                            CityId = 1,
-                            CityName = "New York"
-                        },
-                        new
-                        {
-                            CityId = 2,
-                            CityName = "Los Angeles"
-                        });
                 });
 
-            modelBuilder.Entity("DepartmentManager.Server.Models.Member", b =>
+            modelBuilder.Entity("DepartmentManager.Server.Models.Role", b =>
+                {
+                    b.Property<int>("RoleId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RoleId"));
+
+                    b.Property<int>("AffiliationId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("RoleId");
+
+                    b.HasIndex("AffiliationId");
+
+                    b.ToTable("Roles");
+                });
+
+            modelBuilder.Entity("Member", b =>
                 {
                     b.Property<int>("MemberId")
                         .ValueGeneratedOnAdd()
@@ -108,10 +108,16 @@ namespace DepartmentManager.Server.Migrations
                     b.Property<int>("AffiliationId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("AffiliationId1")
+                        .HasColumnType("int");
+
                     b.Property<int?>("ApproverId")
                         .HasColumnType("int");
 
                     b.Property<int>("CityId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CityId1")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
@@ -155,55 +161,17 @@ namespace DepartmentManager.Server.Migrations
 
                     b.HasIndex("AffiliationId");
 
+                    b.HasIndex("AffiliationId1");
+
                     b.HasIndex("ApproverId");
 
                     b.HasIndex("CityId");
 
+                    b.HasIndex("CityId1");
+
                     b.HasIndex("RoleId");
 
                     b.ToTable("Members");
-                });
-
-            modelBuilder.Entity("DepartmentManager.Server.Models.Role", b =>
-                {
-                    b.Property<int>("RoleId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RoleId"));
-
-                    b.Property<int>("AffiliationId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Level")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("RoleId");
-
-                    b.HasIndex("AffiliationId");
-
-                    b.ToTable("Roles");
-
-                    b.HasData(
-                        new
-                        {
-                            RoleId = 1,
-                            AffiliationId = 1,
-                            Level = 1,
-                            Name = "Admin"
-                        },
-                        new
-                        {
-                            RoleId = 2,
-                            AffiliationId = 1,
-                            Level = 2,
-                            Name = "User"
-                        });
                 });
 
             modelBuilder.Entity("DepartmentManager.Server.Models.Affiliation", b =>
@@ -217,23 +185,42 @@ namespace DepartmentManager.Server.Migrations
                     b.Navigation("City");
                 });
 
-            modelBuilder.Entity("DepartmentManager.Server.Models.Member", b =>
+            modelBuilder.Entity("DepartmentManager.Server.Models.Role", b =>
                 {
                     b.HasOne("DepartmentManager.Server.Models.Affiliation", "Affiliation")
-                        .WithMany("Members")
+                        .WithMany("Roles")
                         .HasForeignKey("AffiliationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("DepartmentManager.Server.Models.Member", "Approver")
+                    b.Navigation("Affiliation");
+                });
+
+            modelBuilder.Entity("Member", b =>
+                {
+                    b.HasOne("DepartmentManager.Server.Models.Affiliation", "Affiliation")
+                        .WithMany()
+                        .HasForeignKey("AffiliationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DepartmentManager.Server.Models.Affiliation", null)
+                        .WithMany("Members")
+                        .HasForeignKey("AffiliationId1");
+
+                    b.HasOne("Member", "Approver")
                         .WithMany()
                         .HasForeignKey("ApproverId");
 
                     b.HasOne("DepartmentManager.Server.Models.City", "City")
-                        .WithMany("Members")
+                        .WithMany()
                         .HasForeignKey("CityId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("DepartmentManager.Server.Models.City", null)
+                        .WithMany("Members")
+                        .HasForeignKey("CityId1");
 
                     b.HasOne("DepartmentManager.Server.Models.Role", "Role")
                         .WithMany("Members")
@@ -248,17 +235,6 @@ namespace DepartmentManager.Server.Migrations
                     b.Navigation("City");
 
                     b.Navigation("Role");
-                });
-
-            modelBuilder.Entity("DepartmentManager.Server.Models.Role", b =>
-                {
-                    b.HasOne("DepartmentManager.Server.Models.Affiliation", "Affiliation")
-                        .WithMany("Roles")
-                        .HasForeignKey("AffiliationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Affiliation");
                 });
 
             modelBuilder.Entity("DepartmentManager.Server.Models.Affiliation", b =>
