@@ -17,10 +17,10 @@ namespace DepartmentManager.Server.Models
         [Required]
         public int CityId { get; set; }
         [ForeignKey("CityId")]
-        public City City { get; set; }
+        public City City { get; set; } = new City();
 
         // Navigation property
-        public List<Role> Roles { get; set; }
-        public List<Member> Members { get; set; }
+        public List<Role> Roles { get; set; } = new List<Role>();
+        public List<Member> Members { get; set; } = new List<Member>();
     }
 }
