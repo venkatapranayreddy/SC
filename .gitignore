@@ -89,6 +89,10 @@ dist-server/
 # Angular
 .angular/
 .angular/cache/
+departmentmanager.client/.angular/
+departmentmanager.client/.angular/cache/
+**/.angular/
+**/.angular/cache/
 
 # Testing
 /coverage
