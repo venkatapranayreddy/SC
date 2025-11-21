@@ -44,7 +44,6 @@ namespace DepartmentManager.Server.Models
 
         // Manager relationship (for approvers)
         public int? ManagerId { get; set; }
-        [ForeignKey("ManagerId")]
         public virtual Member? Manager { get; set; }
 
         // Navigation properties
