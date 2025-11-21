@@ -1,0 +1,178 @@
+<div class="member-approval-wrapper">
+  <section class="header">
+    <h1>Member Affiliation Approval</h1>
+    <p class="subtitle">Review and approve member affiliation requests</p>
+  </section>
+
+  <div class="tabs">
+    <button
+      class="tab-button"
+      [class.active]="activeTab() === 'member'"
+      (click)="switchTab('member')"
+    >
+      Member Approval
+      <span class="badge" *ngIf="memberApprovals().length > 0">{{ memberApprovals().length }}</span>
+    </button>
+    <button
+      class="tab-button"
+      [class.active]="activeTab() === 'affiliation'"
+      (click)="switchTab('affiliation')"
+    >
+      Affiliation for Member Approval
+      <span class="badge" *ngIf="affiliationApprovals().length > 0">{{ affiliationApprovals().length }}</span>
+    </button>
+  </div>
+
+  <div class="content" *ngIf="!isLoading()">
+    <!-- Member Approvals Tab -->
+    <div *ngIf="activeTab() === 'member'" class="approval-list">
+      <div *ngIf="memberApprovals().length === 0" class="empty-state">
+        <p>No pending member approvals at this time.</p>
+      </div>
+
+      <table *ngIf="memberApprovals().length > 0" class="approval-table">
+        <thead>
+          <tr>
+            <th>Member Name</th>
+            <th>City</th>
+            <th>Initial Affiliation</th>
+            <th>Role</th>
+            <th>Phone Number</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let approval of memberApprovals()">
+            <td>{{ approval.memberName }}</td>
+            <td>{{ approval.cityName }}</td>
+            <td>{{ approval.affiliationName }}</td>
+            <td>{{ approval.roleName }}</td>
+            <td>{{ approval.memberPhoneNumber }}</td>
+            <td>
+              <button class="btn-link" (click)="showDetails(approval)">Details</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Affiliation Approvals Tab -->
+    <div *ngIf="activeTab() === 'affiliation'" class="approval-list">
+      <div *ngIf="affiliationApprovals().length === 0" class="empty-state">
+        <p>No pending affiliation approvals at this time.</p>
+      </div>
+
+      <table *ngIf="affiliationApprovals().length > 0" class="approval-table">
+        <thead>
+          <tr>
+            <th>Member Name</th>
+            <th>City</th>
+            <th>Affiliation</th>
+            <th>Role</th>
+            <th>Approver Name</th>
+            <th>Phone Number</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let approval of affiliationApprovals()">
+            <td>{{ approval.memberName }}</td>
+            <td>{{ approval.cityName }}</td>
+            <td>{{ approval.affiliationName }}</td>
+            <td>{{ approval.roleName }}</td>
+            <td>{{ approval.approverName || 'N/A' }}</td>
+            <td>{{ approval.memberPhoneNumber }}</td>
+            <td>
+              <button class="btn-link" (click)="showDetails(approval)">Details</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div *ngIf="isLoading()" class="loading">
+    <p>Loading approvals...</p>
+  </div>
+
+  <!-- Details Modal -->
+  <div *ngIf="selectedApproval()" class="modal-overlay" (click)="closeDetails()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Member Details</h2>
+        <button class="close-button" (click)="closeDetails()">&times;</button>
+      </div>
+
+      <div class="modal-body" *ngIf="selectedApproval()">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>Member Name:</label>
+            <span>{{ selectedApproval()!.memberName }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Email:</label>
+            <span>{{ selectedApproval()!.memberEmail }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Phone Number:</label>
+            <span>{{ selectedApproval()!.memberPhoneNumber }}</span>
+          </div>
+          <div class="detail-item">
+            <label>City:</label>
+            <span>{{ selectedApproval()!.cityName }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Affiliation:</label>
+            <span>{{ selectedApproval()!.affiliationName }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Role:</label>
+            <span>{{ selectedApproval()!.roleName }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedApproval()!.approverName">
+            <label>Approver Name:</label>
+            <span>{{ selectedApproval()!.approverName }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedApproval()!.managerName">
+            <label>Manager Name:</label>
+            <span>{{ selectedApproval()!.managerName }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Govt ID:</label>
+            <span>{{ selectedApproval()!.govtId }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Profile Picture:</label>
+            <img [src]="selectedApproval()!.profilePictureUrl" alt="Profile" class="profile-image" />
+          </div>
+          <div class="detail-item">
+            <label>Digital Signature:</label>
+            <img [src]="selectedApproval()!.digitalSignatureUrl" alt="Signature" class="signature-image" />
+          </div>
+        </div>
+
+        <div *ngIf="!showRejectionReason()" class="modal-actions">
+          <button class="btn btn-approve" (click)="approve(selectedApproval()!)">Approve</button>
+          <button class="btn btn-reject" (click)="reject(selectedApproval()!)">Reject</button>
+        </div>
+
+        <div *ngIf="showRejectionReason()" class="rejection-section">
+          <label>
+            Reason for Rejection:
+            <textarea
+              [(ngModel)]="rejectionReason"
+              rows="4"
+              placeholder="Please provide a reason for rejection..."
+              class="rejection-textarea"
+            ></textarea>
+          </label>
+          <div class="modal-actions">
+            <button class="btn btn-primary" (click)="submitRejection(selectedApproval()!)">Submit Rejection</button>
+            <button class="btn btn-secondary" (click)="cancelRejection()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

@@ -10,20 +10,74 @@ namespace DepartmentManager.Server.Models
         public DbSet<City> Cities { get; set; }
         public DbSet<Affiliation> Affiliations { get; set; }
         public DbSet<Role> Roles { get; set; }
+        public DbSet<MemberAffiliation> MemberAffiliations { get; set; }
+        public DbSet<ApprovalRequest> ApprovalRequests { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            modelBuilder.Entity<Member>()
-    .HasOne(m => m.City)
-    .WithMany()
-    .HasForeignKey(m => m.CityId)
-    .OnDelete(DeleteBehavior.Restrict);
 
+            // Member - Manager self-referencing relationship
             modelBuilder.Entity<Member>()
-                .HasOne(m => m.Affiliation)
+                .HasOne(m => m.Manager)
                 .WithMany()
-                .HasForeignKey(m => m.AffiliationId)
+                .HasForeignKey(m => m.ManagerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // MemberAffiliation relationships
+            modelBuilder.Entity<MemberAffiliation>()
+                .HasOne(ma => ma.Member)
+                .WithMany(m => m.MemberAffiliations)
+                .HasForeignKey(ma => ma.MemberId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MemberAffiliation>()
+                .HasOne(ma => ma.City)
+                .WithMany()
+                .HasForeignKey(ma => ma.CityId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MemberAffiliation>()
+                .HasOne(ma => ma.Affiliation)
+                .WithMany()
+                .HasForeignKey(ma => ma.AffiliationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MemberAffiliation>()
+                .HasOne(ma => ma.Role)
+                .WithMany()
+                .HasForeignKey(ma => ma.RoleId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MemberAffiliation>()
+                .HasOne(ma => ma.Approver)
+                .WithMany(m => m.ApprovalsAsApprover)
+                .HasForeignKey(ma => ma.ApproverId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MemberAffiliation>()
+                .HasOne(ma => ma.ApprovedByApprover)
+                .WithMany()
+                .HasForeignKey(ma => ma.ApprovedByApproverId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MemberAffiliation>()
+                .HasOne(ma => ma.ApprovedByManager)
+                .WithMany(m => m.ApprovalsAsManager)
+                .HasForeignKey(ma => ma.ApprovedByManagerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ApprovalRequest relationships
+            modelBuilder.Entity<ApprovalRequest>()
+                .HasOne(ar => ar.MemberAffiliation)
+                .WithMany()
+                .HasForeignKey(ar => ar.MemberAffiliationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ApprovalRequest>()
+                .HasOne(ar => ar.RequestedToMember)
+                .WithMany()
+                .HasForeignKey(ar => ar.RequestedToMemberId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             //// Seed Cities

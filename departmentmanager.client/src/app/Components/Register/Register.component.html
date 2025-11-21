@@ -81,10 +81,19 @@
         </label>
 
         <label>
+          Instagram ID (Optional)
+          <input
+            type="text"
+            formControlName="instagramId"
+            placeholder="@your_instagram_handle"
+          />
+        </label>
+
+        <label>
           City
           <select formControlName="city" [class.invalid]="registrationForm.get('city')?.invalid && registrationForm.get('city')?.touched">
             <option value="">Select City</option>
-            <option *ngFor="let city of cities" [value]="city.id">{{ city.name }}</option>
+            <option *ngFor="let city of cities()" [value]="city.cityId">{{ city.cityName }}</option>
           </select>
           <small *ngIf="registrationForm.get('city')?.invalid && registrationForm.get('city')?.touched">
             Select the city you are registering under.
@@ -99,7 +108,7 @@
             [class.invalid]="registrationForm.get('affiliation')?.invalid && registrationForm.get('affiliation')?.touched"
           >
             <option value="">Select Affiliation</option>
-            <option *ngFor="let affiliation of affiliationOptions()" [value]="affiliation.id">
+            <option *ngFor="let affiliation of affiliationOptions()" [value]="affiliation.affiliationId">
               {{ affiliation.name }}
             </option>
           </select>
@@ -117,11 +126,12 @@
 
         <label>
           Role
-          <select formControlName="role" [class.invalid]="registrationForm.get('role')?.invalid && registrationForm.get('role')?.touched">
+          <select formControlName="role" [disabled]="!selectedAffiliation()" [class.invalid]="registrationForm.get('role')?.invalid && registrationForm.get('role')?.touched">
             <option value="">Select Role</option>
-            <option *ngFor="let role of roles" [value]="role.id">{{ role.label }}</option>
+            <option *ngFor="let role of roleOptions()" [value]="role.roleId">{{ role.name }}</option>
           </select>
-          <small *ngIf="registrationForm.get('role')?.invalid && registrationForm.get('role')?.touched">
+          <small *ngIf="!selectedAffiliation()">Select an affiliation to view roles.</small>
+          <small *ngIf="selectedAffiliation() && registrationForm.get('role')?.invalid && registrationForm.get('role')?.touched">
             Select the role you will perform.
           </small>
         </label>
@@ -134,8 +144,8 @@
             [class.invalid]="registrationForm.get('approver')?.invalid && registrationForm.get('approver')?.touched"
           >
             <option value="">Select Approver</option>
-            <option *ngFor="let approver of approverOptions()" [value]="approver.id">
-              {{ approver.name }} &mdash; Manager: {{ approver.manager }}
+            <option *ngFor="let approver of approverOptions()" [value]="approver.memberId">
+              {{ approver.fullName }}<span *ngIf="approver.managerName"> &mdash; Manager: {{ approver.managerName }}</span>
             </option>
           </select>
           <small *ngIf="!selectedAffiliation()">Select an affiliation to see available approvers.</small>

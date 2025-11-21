@@ -18,6 +18,8 @@ builder.Services.AddScoped<IRepository<Member>, Repository<Member>>();
 builder.Services.AddScoped<IRepository<City>, Repository<City>>();
 builder.Services.AddScoped<IRepository<Role>, Repository<Role>>();
 builder.Services.AddScoped<IRepository<Affiliation>, Repository<Affiliation>>();
+builder.Services.AddScoped<IRepository<MemberAffiliation>, Repository<MemberAffiliation>>();
+builder.Services.AddScoped<IRepository<ApprovalRequest>, Repository<ApprovalRequest>>();
 
 var app = builder.Build();
 

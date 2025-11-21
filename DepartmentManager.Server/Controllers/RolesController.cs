@@ -17,10 +17,15 @@ namespace DepartmentManager.Server.Controllers
 
         // GET: api/Roles
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Role>>> GetRoles()
+        public async Task<ActionResult<IEnumerable<Role>>> GetRoles([FromQuery] int? affiliationId = null)
         {
-            var roles = await _repository.GetAllAsync();
-            return Ok(roles);
+            if (affiliationId.HasValue)
+            {
+                var roles = await _repository.FindAsync(r => r.AffiliationId == affiliationId.Value);
+                return Ok(roles);
+            }
+            var allRoles = await _repository.GetAllAsync();
+            return Ok(allRoles);
         }
 
         // GET: api/Roles/5

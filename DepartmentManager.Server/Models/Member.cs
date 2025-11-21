@@ -1,50 +1,55 @@
 using DepartmentManager.Server.Models;
 using System.ComponentModel.DataAnnotations;
 
-public class Member
+namespace DepartmentManager.Server.Models
 {
-    [Key]
-    public int MemberId { get; set; }
+    public enum MemberStatus
+    {
+        Pending = 0,
+        Active = 1,
+        Inactive = 2,
+        Rejected = 3
+    }
 
-    [Required, StringLength(100)]
-    public string FullName { get; set; }
+    public class Member
+    {
+        [Key]
+        public int MemberId { get; set; }
 
-    [Required, EmailAddress, StringLength(150)]
-    public string Email { get; set; }
+        [Required, StringLength(100)]
+        public string FullName { get; set; } = string.Empty;
 
-    [Required, Phone, StringLength(20)]
-    public string PhoneNumber { get; set; }
+        [Required, EmailAddress, StringLength(150)]
+        public string Email { get; set; } = string.Empty;
 
-    [Required]
-    public int CityId { get; set; }
-    public virtual City City { get; set; }
+        [Required, Phone, StringLength(20)]
+        public string PhoneNumber { get; set; } = string.Empty;
 
-    [Required]
-    public int AffiliationId { get; set; }
-    public virtual Affiliation Affiliation { get; set; }
+        // Google OAuth fields
+        public string? GoogleId { get; set; }
+        public string? GoogleEmail { get; set; }
 
-    [Required]
-    public int RoleId { get; set; }
-    public virtual Role Role { get; set; }
+        // Additional fields
+        public string? InstagramId { get; set; }
+        public string? Address { get; set; }
 
-    public int? ApproverId { get; set; }
-    public virtual Member Approver { get; set; }
+        // Member status
+        public MemberStatus Status { get; set; } = MemberStatus.Pending;
 
-    [Required, StringLength(50)]
-    public string GovtId { get; set; }
+        // Terms acceptance
+        public bool AcceptTermsAndConditions { get; set; }
 
-    [Required]
-    public string ProfilePictureUrl { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
 
-    [Required, StringLength(300)]
-    public string Address { get; set; }
+        // Manager relationship (for approvers)
+        public int? ManagerId { get; set; }
+        [ForeignKey("ManagerId")]
+        public virtual Member? Manager { get; set; }
 
-    [Required]
-    public string DigitalSignatureUrl { get; set; }
-
-    [Required]
-    public bool AcceptTermsAndConditions { get; set; }
-
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? UpdatedAt { get; set; }
+        // Navigation properties
+        public virtual ICollection<MemberAffiliation> MemberAffiliations { get; set; } = new List<MemberAffiliation>();
+        public virtual ICollection<MemberAffiliation> ApprovalsAsApprover { get; set; } = new List<MemberAffiliation>();
+        public virtual ICollection<MemberAffiliation> ApprovalsAsManager { get; set; } = new List<MemberAffiliation>();
+    }
 }

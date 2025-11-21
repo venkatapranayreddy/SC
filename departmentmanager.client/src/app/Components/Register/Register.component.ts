@@ -1,27 +1,39 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
 import { StkModalService } from '../../services/modal.service';
+import { MemberService } from '../../services/member.service';
+import { BaseService } from '../../services/base.service';
+import { HttpClient } from '@angular/common/http';
+import { HttpParams } from '@angular/common/http';
+import { catchError, forkJoin, of } from 'rxjs';
 
 type RegistrationMode = 'google' | 'form' | null;
 
 interface Approver {
-  id: string;
-  name: string;
-  manager: string;
+  memberId: number;
+  fullName: string;
+  email: string;
+  managerId?: number;
+  managerName?: string;
 }
 
 interface Affiliation {
-  id: string;
+  affiliationId: number;
   name: string;
-  approvers: Approver[];
+  cityId: number;
+}
+
+interface Role {
+  roleId: number;
+  name: string;
+  affiliationId: number;
 }
 
 interface City {
-  id: string;
-  name: string;
-  affiliations: Affiliation[];
+  cityId: number;
+  cityName: string;
 }
 
 @Component({
@@ -31,81 +43,23 @@ interface City {
   styleUrl: './Register.component.css',
   imports: [CommonModule, ReactiveFormsModule, FormsModule]
 })
-export class RegisterComponent {
+export class RegisterComponent implements OnInit {
   private modalService = inject(StkModalService);
   private fb = inject(FormBuilder);
+  private memberService = inject(MemberService);
+  private httpClient = inject(HttpClient);
 
   registrationMode = signal<RegistrationMode>(null);
   isSubmitting = signal(false);
-  googleProfile = signal<{ fullName: string; email: string } | null>(null);
-  selectedCity = signal<string | null>(null);
-  selectedAffiliation = signal<string | null>(null);
+  isLoading = signal(false);
+  googleProfile = signal<{ fullName: string; email: string; googleId?: string } | null>(null);
+  selectedCity = signal<number | null>(null);
+  selectedAffiliation = signal<number | null>(null);
 
-  roles = [
-    { id: 'member', label: 'Member' },
-    { id: 'lead', label: 'Team Lead' },
-    { id: 'coordinator', label: 'Coordinator' },
-    { id: 'finance', label: 'Finance' },
-    { id: 'admin', label: 'Admin' }
-  ];
-
-  cities: City[] = [
-    {
-      id: 'hyd',
-      name: 'Hyderabad',
-      affiliations: [
-        {
-          id: 'hyd-edu',
-          name: 'Street Cause Hyderabad - Education',
-          approvers: [
-            { id: 'anna-rao', name: 'Ananya Rao', manager: 'Nikhil Varma' },
-            { id: 'rahul-k', name: 'Rahul Kumar', manager: 'Nikhil Varma' }
-          ]
-        },
-        {
-          id: 'hyd-health',
-          name: 'Street Cause Hyderabad - Health',
-          approvers: [
-            { id: 'sana-p', name: 'Sana Patel', manager: 'Rohit Salian' }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'blr',
-      name: 'Bengaluru',
-      affiliations: [
-        {
-          id: 'blr-ops',
-          name: 'Street Cause Bengaluru - Operations',
-          approvers: [
-            { id: 'meera-d', name: 'Meera Dsouza', manager: 'Anirudh Bhat' }
-          ]
-        },
-        {
-          id: 'blr-tech',
-          name: 'Street Cause Bengaluru - Technology',
-          approvers: [
-            { id: 'akash-k', name: 'Akash Kulkarni', manager: 'Anirudh Bhat' },
-            { id: 'nisha-fern', name: 'Nisha Fernandes', manager: 'Uma Devi' }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'viz',
-      name: 'Vizag',
-      affiliations: [
-        {
-          id: 'viz-community',
-          name: 'Street Cause Vizag - Community',
-          approvers: [
-            { id: 'jahnavi-s', name: 'Jahnavi Shenoy', manager: 'Abhinav Rao' }
-          ]
-        }
-      ]
-    }
-  ];
+  cities = signal<City[]>([]);
+  affiliations = signal<Affiliation[]>([]);
+  roles = signal<Role[]>([]);
+  approvers = signal<Approver[]>([]);
 
   registrationForm = this.fb.group({
     fullName: this.fb.control({ value: '', disabled: false }, Validators.required),
@@ -117,6 +71,7 @@ export class RegisterComponent {
       Validators.required,
       Validators.pattern(/^[0-9]{10}$/)
     ]),
+    instagramId: this.fb.control(''),
     city: this.fb.control('', Validators.required),
     affiliation: this.fb.control('', Validators.required),
     role: this.fb.control('', Validators.required),
@@ -133,29 +88,111 @@ export class RegisterComponent {
     if (!cityId) {
       return [] as Affiliation[];
     }
-    return this.cities.find(city => city.id === cityId)?.affiliations ?? [];
+    return this.affiliations().filter(aff => aff.cityId === cityId);
+  });
+
+  roleOptions = computed(() => {
+    const affiliationId = this.selectedAffiliation();
+    if (!affiliationId) {
+      return [] as Role[];
+    }
+    return this.roles().filter(role => role.affiliationId === affiliationId);
   });
 
   approverOptions = computed(() => {
-    const affiliationId = this.selectedAffiliation();
-    if (!affiliationId) {
-      return [] as Approver[];
-    }
-    return this.affiliationOptions().find(aff => aff.id === affiliationId)?.approvers ?? [];
+    return this.approvers();
   });
 
   constructor() {
     this.registrationForm.get('city')?.valueChanges.subscribe(cityId => {
-      this.selectedCity.set(cityId || null);
+      this.selectedCity.set(cityId ? parseInt(cityId) : null);
       this.registrationForm.get('affiliation')?.setValue('');
+      this.registrationForm.get('role')?.setValue('');
       this.registrationForm.get('approver')?.setValue('');
       this.selectedAffiliation.set(null);
+      this.loadAffiliationsForCity(cityId ? parseInt(cityId) : null);
     });
 
     this.registrationForm.get('affiliation')?.valueChanges.subscribe(affiliationId => {
-      this.selectedAffiliation.set(affiliationId || null);
+      this.selectedAffiliation.set(affiliationId ? parseInt(affiliationId) : null);
+      this.registrationForm.get('role')?.setValue('');
       this.registrationForm.get('approver')?.setValue('');
+      this.loadRolesForAffiliation(affiliationId ? parseInt(affiliationId) : null);
+      this.loadApproversForAffiliation(affiliationId ? parseInt(affiliationId) : null);
     });
+  }
+
+  ngOnInit(): void {
+    this.loadCities();
+  }
+
+  private loadCities(): void {
+    this.isLoading.set(true);
+    this.httpClient.get<City[]>('/api/City/')
+      .pipe(
+        catchError(error => {
+          this.modalService.showInformModal('Failed to load cities. Please refresh the page.', 'Error');
+          return of([]);
+        })
+      )
+      .subscribe(cities => {
+        this.cities.set(cities);
+        this.isLoading.set(false);
+      });
+  }
+
+  private loadAffiliationsForCity(cityId: number | null): void {
+    if (!cityId) {
+      this.affiliations.set([]);
+      return;
+    }
+
+    this.httpClient.get<Affiliation[]>(`/api/Affilation/?cityId=${cityId}`)
+      .pipe(
+        catchError(error => {
+          console.error('Error loading affiliations:', error);
+          return of([]);
+        })
+      )
+      .subscribe(affiliations => {
+        this.affiliations.set(affiliations);
+      });
+  }
+
+  private loadRolesForAffiliation(affiliationId: number | null): void {
+    if (!affiliationId) {
+      this.roles.set([]);
+      return;
+    }
+
+    this.httpClient.get<Role[]>(`/api/Roles/?affiliationId=${affiliationId}`)
+      .pipe(
+        catchError(error => {
+          console.error('Error loading roles:', error);
+          return of([]);
+        })
+      )
+      .subscribe(roles => {
+        this.roles.set(roles);
+      });
+  }
+
+  private loadApproversForAffiliation(affiliationId: number | null): void {
+    if (!affiliationId) {
+      this.approvers.set([]);
+      return;
+    }
+
+    this.httpClient.get<Approver[]>(`/api/Member/approvers/${affiliationId}`)
+      .pipe(
+        catchError(error => {
+          console.error('Error loading approvers:', error);
+          return of([]);
+        })
+      )
+      .subscribe(approvers => {
+        this.approvers.set(approvers);
+      });
   }
 
   get fullNameControl() {
@@ -200,7 +237,7 @@ export class RegisterComponent {
     this.registrationForm.get(controlName)?.markAsTouched();
   }
 
-  onSubmit(): void {
+  async onSubmit(): Promise<void> {
     if (!this.registrationMode()) {
       this.modalService.showInformModal('Please select how you would like to sign up (Google or Fill out).', 'Select Sign Up Mode');
       return;
@@ -213,34 +250,75 @@ export class RegisterComponent {
       return;
     }
 
-    const payload = {
-      mode: this.registrationMode(),
-      googleProfile: this.googleProfile(),
-      ...this.registrationForm.getRawValue()
-    };
-
-    console.log('Registration payload', payload);
     this.isSubmitting.set(true);
 
-    setTimeout(() => {
+    try {
+      // Upload files first
+      const profilePictureFile = this.registrationForm.get('profilePicture')?.value as File;
+      const digitalSignatureFile = this.registrationForm.get('digitalSignature')?.value as File;
+
+      const [profilePictureUrl, digitalSignatureUrl] = await Promise.all([
+        this.memberService.uploadFile(profilePictureFile).toPromise().then(r => r?.url || ''),
+        this.memberService.uploadFile(digitalSignatureFile).toPromise().then(r => r?.url || '')
+      ]);
+
+      const formValue = this.registrationForm.getRawValue();
+      const registrationDto: any = {
+        fullName: formValue.fullName,
+        email: formValue.email,
+        phoneNumber: formValue.phoneNumber,
+        instagramId: formValue.instagramId || undefined,
+        address: formValue.address,
+        cityId: formValue.city ? parseInt(formValue.city) : undefined,
+        affiliationId: formValue.affiliation ? parseInt(formValue.affiliation) : undefined,
+        roleId: formValue.role ? parseInt(formValue.role) : undefined,
+        approverId: formValue.approver ? parseInt(formValue.approver) : undefined,
+        govtId: formValue.govtId,
+        profilePictureUrl: profilePictureUrl,
+        digitalSignatureUrl: digitalSignatureUrl,
+        acceptTermsAndConditions: formValue.termsAccepted
+      };
+
+      if (this.registrationMode() === 'google' && this.googleProfile()) {
+        registrationDto.googleId = this.googleProfile()?.googleId || 'google-oauth-id';
+        registrationDto.googleEmail = this.googleProfile()?.email;
+      }
+
+      this.memberService.registerMember(registrationDto).subscribe({
+        next: (response) => {
+          this.isSubmitting.set(false);
+          this.modalService.showInformModal(
+            'Registration submitted successfully. Your approver will be notified for affiliation approval. After your approver and their manager approve, your affiliation account will be activated. You can then sign in to view your affiliations and dashboards.',
+            'Registration Submitted'
+          );
+          this.resetMode();
+        },
+        error: (error) => {
+          this.isSubmitting.set(false);
+          const errorMessage = error?.error?.message || 'Registration failed. Please try again.';
+          this.modalService.showInformModal(errorMessage, 'Registration Error');
+        }
+      });
+    } catch (error) {
       this.isSubmitting.set(false);
-      this.modalService.showInformModal(
-        'Registration submitted successfully. Your approver will be notified for affiliation approval. After your approver and their manager approve, your affiliation account will be activated. You can then sign in to view your affiliations and dashboards.',
-        'Registration Submitted'
-      );
-      this.resetMode();
-    }, 1200);
+      this.modalService.showInformModal('Failed to upload files. Please try again.', 'Upload Error');
+    }
   }
 
   private startGoogleSignUp(): void {
+    // TODO: Implement actual Google OAuth 2.0 flow
+    // For now, show a placeholder
     this.modalService.showInformModal(
       'Google Sign-Up will redirect to OAuth 2.0 provider in production. Prefilling your Google profile information for now.',
       'Google Sign-Up (Preview)'
     );
 
+    // In production, this would be handled by Google OAuth
+    // For now, use a sample profile
     const sampleProfile = {
       fullName: 'Street Cause Member',
-      email: 'member@streetcause.org'
+      email: 'member@streetcause.org',
+      googleId: 'google-oauth-id-placeholder'
     };
 
     this.googleProfile.set(sampleProfile);

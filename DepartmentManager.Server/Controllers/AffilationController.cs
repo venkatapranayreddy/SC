@@ -17,10 +17,15 @@ namespace DepartmentManager.Server.Controllers
 
         // GET: api/Affilation
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Affiliation>>> GetAffiliations()
+        public async Task<ActionResult<IEnumerable<Affiliation>>> GetAffiliations([FromQuery] int? cityId = null)
         {
-            var affiliations = await _repository.GetAllAsync();
-            return Ok(affiliations);
+            if (cityId.HasValue)
+            {
+                var affiliations = await _repository.FindAsync(a => a.CityId == cityId.Value);
+                return Ok(affiliations);
+            }
+            var allAffiliations = await _repository.GetAllAsync();
+            return Ok(allAffiliations);
         }
 
         // GET: api/Affilation/5

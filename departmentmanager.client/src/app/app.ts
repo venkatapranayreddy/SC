@@ -8,10 +8,11 @@ import { TestService } from './services/test.service';
 import { StkModalService } from './services/modal.service';
 import { LoginComponent } from './Components/Login/Login.component';
 import { RegisterComponent } from './Components/Register/Register.component';
+import { MemberApprovalComponent } from './Components/MemberApproval/MemberApproval.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, NavbarComponent, CoreModule, FormsModule, LoginComponent, RegisterComponent],
+  imports: [RouterOutlet, NavbarComponent, CoreModule, FormsModule, LoginComponent, RegisterComponent, MemberApprovalComponent],
   templateUrl: './app.html',
   styleUrl: './app.css',
   providers: [TestService]
