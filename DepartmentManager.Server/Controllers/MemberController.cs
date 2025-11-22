@@ -10,29 +10,14 @@ namespace DepartmentManager.Server.Controllers
     public class MemberController : ControllerBase
     {
         private readonly IMemberRepository _memberRepository;
-        private readonly IMemberAffiliationRepository _memberAffiliationRepository;
-        private readonly IApprovalRequestRepository _approvalRequestRepository;
-        private readonly ICityRepository _cityRepository;
-        private readonly IAffiliationRepository _affiliationRepository;
-        private readonly IRoleRepository _roleRepository;
 
-        public MemberController(
-            IMemberRepository memberRepository,
-            IMemberAffiliationRepository memberAffiliationRepository,
-            IApprovalRequestRepository approvalRequestRepository,
-            ICityRepository cityRepository,
-            IAffiliationRepository affiliationRepository,
-            IRoleRepository roleRepository)
+        public MemberController(IMemberRepository memberRepository)
         {
             _memberRepository = memberRepository;
-            _memberAffiliationRepository = memberAffiliationRepository;
-            _approvalRequestRepository = approvalRequestRepository;
-            _cityRepository = cityRepository;
-            _affiliationRepository = affiliationRepository;
-            _roleRepository = roleRepository;
         }
 
         // GET: api/Member
+        
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Member>>> GetMembers()
         {
@@ -44,60 +29,8 @@ namespace DepartmentManager.Server.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<MemberDetailDto>> GetMember(int id)
         {
-            var member = await _memberRepository.GetByIdAsync(id);
-
-            if (member == null) return NotFound();
-           
-            var memberAffiliations = await _memberAffiliationRepository.GetByMemberIdAsync(id);
-            var affiliationDtos = new List<MemberAffiliationDto>();
-
-            foreach (var ma in memberAffiliations)
-            {
-                var city = await _cityRepository.GetCityByIdAsync(ma.CityId);
-                var affiliation = await _affiliationRepository.GetByIdAsync(ma.AffiliationId);
-                var role = await _roleRepository.GetByIdAsync(ma.RoleId);
-                var approver = ma.ApproverId.HasValue ? await _memberRepository.GetByIdAsync(ma.ApproverId.Value) : null;
-                var manager = approver?.ManagerId.HasValue == true ? await _memberRepository.GetByIdAsync(approver.ManagerId.Value) : null;
-
-                affiliationDtos.Add(new MemberAffiliationDto
-                {
-                    MemberAffiliationId = ma.MemberAffiliationId,
-                    MemberId = ma.MemberId,
-                    MemberName = member.FullName,
-                    MemberEmail = member.Email,
-                    MemberPhoneNumber = member.PhoneNumber,
-                    CityId = ma.CityId,
-                    CityName = city?.CityName ?? "",
-                    AffiliationId = ma.AffiliationId,
-                    AffiliationName = affiliation?.Name ?? "",
-                    RoleId = ma.RoleId,
-                    RoleName = role?.Name ?? "",
-                    ApproverId = ma.ApproverId,
-                    ApproverName = approver?.FullName,
-                    ManagerName = manager?.FullName,
-                    GovtId = ma.GovtId,
-                    ProfilePictureUrl = ma.ProfilePictureUrl,
-                    DigitalSignatureUrl = ma.DigitalSignatureUrl,
-                    ApprovalStatus = ma.ApprovalStatus,
-                    RejectionReason = ma.RejectionReason,
-                    CreatedAt = ma.CreatedAt
-                });
-            }
-
-            var memberDto = new MemberDetailDto
-            {
-                MemberId = member.MemberId,
-                FullName = member.FullName,
-                Email = member.Email,
-                PhoneNumber = member.PhoneNumber,
-                InstagramId = member.InstagramId,
-                Address = member.Address,
-                GoogleId = member.GoogleId,
-                GoogleEmail = member.GoogleEmail,
-                Status = member.Status,
-                Affiliations = affiliationDtos
-            };
-
+            var memberDto = await _memberRepository.GetMemberDetailAsync(id);
+            if (memberDto == null) return NotFound();
             return Ok(memberDto);
         }
 
@@ -106,13 +39,11 @@ namespace DepartmentManager.Server.Controllers
         public async Task<ActionResult<MemberDetailDto>> GetMemberByEmail(string email)
         {
             var member = await _memberRepository.GetMemberByEmailAsync(email);
-
-            if (member == null)
-            {
-                return NotFound();
-            }
-
-            return await GetMember(member.MemberId);
+            if (member == null) return NotFound();
+            
+            var memberDto = await _memberRepository.GetMemberDetailAsync(member.MemberId);
+            if (memberDto == null) return NotFound();
+            return Ok(memberDto);
         }
 
         // POST: api/Member/register
@@ -124,202 +55,66 @@ namespace DepartmentManager.Server.Controllers
                 return BadRequest(ModelState);
             }
 
-            // Validate email for non-Google registration
-            if (string.IsNullOrEmpty(dto.GoogleId) && dto.Email.ToLower().EndsWith("@gmail.com"))
+            try
             {
-                return BadRequest(new { message = "Gmail addresses are not allowed for form-based registration. Please use Google Sign-Up instead." });
+                var memberDto = await _memberRepository.RegisterMemberAsync(dto);
+                return CreatedAtAction(nameof(GetMember), new { id = memberDto.MemberId }, memberDto);
             }
-
-            // Check if member already exists
-            var existingMember = await _memberRepository.GetMemberByEmailAsync(dto.Email);
-            Member member;
-
-            if (existingMember == null)
+            catch (InvalidOperationException ex)
             {
-                // Create new member
-                member = new Member
-                {
-                    FullName = dto.FullName,
-                    Email = dto.Email,
-                    PhoneNumber = dto.PhoneNumber,
-                    GoogleId = dto.GoogleId,
-                    GoogleEmail = dto.GoogleEmail,
-                    InstagramId = dto.InstagramId,
-                    Address = dto.Address,
-                    Status = MemberStatus.Pending,
-                    AcceptTermsAndConditions = dto.AcceptTermsAndConditions,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                member = await _memberRepository.AddAsync(member);
+                return BadRequest(new { message = ex.Message });
             }
-            else
+            catch (Exception ex)
             {
-                // Update existing member if needed
-                member = existingMember;
-                if (!string.IsNullOrEmpty(dto.GoogleId))
-                {
-                    member.GoogleId = dto.GoogleId;
-                    member.GoogleEmail = dto.GoogleEmail;
-                }
-                if (!string.IsNullOrEmpty(dto.InstagramId))
-                {
-                    member.InstagramId = dto.InstagramId;
-                }
-                if (!string.IsNullOrEmpty(dto.Address))
-                {
-                    member.Address = dto.Address;
-                }
-                member.UpdatedAt = DateTime.UtcNow;
-                await _memberRepository.UpdateAsync(member);
+                return StatusCode(500, new { message = "An error occurred while registering the member.", error = ex.Message });
             }
-
-            // Verify approver exists and get their manager
-            var approver = await _memberRepository.GetByIdAsync(dto.ApproverId);
-            if (approver == null)
-            {
-                return BadRequest(new { message = "Selected approver not found." });
-            }
-
-            // Create MemberAffiliation
-            var memberAffiliation = new MemberAffiliation
-            {
-                MemberId = member.MemberId,
-                CityId = dto.CityId,
-                AffiliationId = dto.AffiliationId,
-                RoleId = dto.RoleId,
-                ApproverId = dto.ApproverId,
-                GovtId = dto.GovtId,
-                ProfilePictureUrl = dto.ProfilePictureUrl,
-                DigitalSignatureUrl = dto.DigitalSignatureUrl,
-                ApprovalStatus = ApprovalStatus.PendingApprover,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            memberAffiliation = await _memberAffiliationRepository.AddAsync(memberAffiliation);
-
-            // Create approval request for approver
-            var approverRequest = new ApprovalRequest
-            {
-                MemberAffiliationId = memberAffiliation.MemberAffiliationId,
-                RequestType = RequestType.MemberApproval,
-                RequestedToMemberId = dto.ApproverId,
-                Status = RequestStatus.Pending,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            await _approvalRequestRepository.AddAsync(approverRequest);
-
-            // If approver has a manager, create approval request for manager
-            if (approver.ManagerId.HasValue)
-            {
-                var managerRequest = new ApprovalRequest
-                {
-                    MemberAffiliationId = memberAffiliation.MemberAffiliationId,
-                    RequestType = RequestType.AffiliationApproval,
-                    RequestedToMemberId = approver.ManagerId.Value,
-                    Status = RequestStatus.Pending,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                await _approvalRequestRepository.AddAsync(managerRequest);
-            }
-
-            return CreatedAtAction(nameof(GetMember), new { id = member.MemberId }, await GetMember(member.MemberId));
         }
 
         // GET: api/Member/approvers/{affiliationId}
         [HttpGet("approvers/{affiliationId}")]
         public async Task<ActionResult<IEnumerable<object>>> GetApprovers(int affiliationId)
         {
-            // Get members who can be approvers for this affiliation
-            // This would typically filter by role or other criteria
-            // For now, return all active members
-            var approvers = await _memberRepository.GetActiveMembersAsync();
-            
-            var result = approvers.Select(m => new
-            {
-                memberId = m.MemberId,
-                fullName = m.FullName,
-                email = m.Email,
-                managerId = m.ManagerId,
-                managerName = m.Manager?.FullName
-            }).ToList();
-
-            return Ok(result);
+            var approvers = await _memberRepository.GetApproversAsync(affiliationId);
+            return Ok(approvers);
         }
 
         // GET: api/Member/{memberId}/affiliations
         [HttpGet("{memberId}/affiliations")]
         public async Task<ActionResult<IEnumerable<MemberAffiliationDto>>> GetMemberAffiliations(int memberId)
         {
-            var member = await _memberRepository.GetByIdAsync(memberId);
-            if (member == null)
+            try
+            {
+                var affiliations = await _memberRepository.GetMemberAffiliationsAsync(memberId);
+                return Ok(affiliations);
+            }
+            catch (InvalidOperationException)
             {
                 return NotFound();
             }
-
-            var memberAffiliations = await _memberAffiliationRepository.GetByMemberIdAsync(memberId);
-            var affiliationDtos = new List<MemberAffiliationDto>();
-
-            foreach (var ma in memberAffiliations)
-            {
-                var city = await _cityRepository.GetCityByIdAsync(ma.CityId);
-                var affiliation = await _affiliationRepository.GetByIdAsync(ma.AffiliationId);
-                var role = await _roleRepository.GetByIdAsync(ma.RoleId);
-                var approver = ma.ApproverId.HasValue ? await _memberRepository.GetByIdAsync(ma.ApproverId.Value) : null;
-                var manager = approver?.ManagerId.HasValue == true ? await _memberRepository.GetByIdAsync(approver.ManagerId.Value) : null;
-
-                affiliationDtos.Add(new MemberAffiliationDto
-                {
-                    MemberAffiliationId = ma.MemberAffiliationId,
-                    MemberId = ma.MemberId,
-                    MemberName = member.FullName,
-                    MemberEmail = member.Email,
-                    MemberPhoneNumber = member.PhoneNumber,
-                    CityId = ma.CityId,
-                    CityName = city?.CityName ?? "",
-                    AffiliationId = ma.AffiliationId,
-                    AffiliationName = affiliation?.Name ?? "",
-                    RoleId = ma.RoleId,
-                    RoleName = role?.Name ?? "",
-                    ApproverId = ma.ApproverId,
-                    ApproverName = approver?.FullName,
-                    ManagerName = manager?.FullName,
-                    GovtId = ma.GovtId,
-                    ProfilePictureUrl = ma.ProfilePictureUrl,
-                    DigitalSignatureUrl = ma.DigitalSignatureUrl,
-                    ApprovalStatus = ma.ApprovalStatus,
-                    RejectionReason = ma.RejectionReason,
-                    CreatedAt = ma.CreatedAt
-                });
-            }
-
-            return Ok(affiliationDtos);
         }
 
         // PUT: api/Member/5
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateMember(int id, Member member)
         {
-            if (id != member.MemberId)
-            {
-                return BadRequest();
-            }
-
-            var existingMember = await _memberRepository.GetByIdAsync(id);
-            if (existingMember == null)
-            {
-                return NotFound();
-            }
-
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            await _memberRepository.UpdateAsync(member);
-            return NoContent();
+            try
+            {
+                await _memberRepository.UpdateMemberAsync(id, member);
+                return NoContent();
+            }
+            catch (ArgumentException)
+            {
+                return BadRequest();
+            }
+            catch (InvalidOperationException)
+            {
+                return NotFound();
+            }
         }
 
         // DELETE: api/Member/5
