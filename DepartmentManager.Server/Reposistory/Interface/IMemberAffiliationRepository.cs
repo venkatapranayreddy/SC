@@ -11,3 +11,4 @@ namespace DepartmentManager.Server.Reposistory.Interface
         Task<IEnumerable<MemberAffiliation>> GetByIdsAsync(IEnumerable<int> memberAffiliationIds);
     }
 }
+
