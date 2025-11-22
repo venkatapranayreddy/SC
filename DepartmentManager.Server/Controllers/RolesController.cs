@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using DepartmentManager.Server.Models;
-using DepartmentManager.Server.Reposistory;
+using DepartmentManager.Server.Reposistory.Interface;
 
 namespace DepartmentManager.Server.Controllers
 {
@@ -8,11 +8,11 @@ namespace DepartmentManager.Server.Controllers
     [Route("api/[controller]")]
     public class RolesController : ControllerBase
     {
-        private readonly IRepository<Role> _repository;
+        private readonly IRoleRepository _roleRepository;
 
-        public RolesController(IRepository<Role> repository)
+        public RolesController(IRoleRepository roleRepository)
         {
-            _repository = repository;
+            _roleRepository = roleRepository;
         }
 
         // GET: api/Roles
@@ -21,10 +21,10 @@ namespace DepartmentManager.Server.Controllers
         {
             if (affiliationId.HasValue)
             {
-                var roles = await _repository.FindAsync(r => r.AffiliationId == affiliationId.Value);
+                var roles = await _roleRepository.GetByAffiliationIdAsync(affiliationId.Value);
                 return Ok(roles);
             }
-            var allRoles = await _repository.GetAllAsync();
+            var allRoles = await _roleRepository.GetAllAsync();
             return Ok(allRoles);
         }
 
@@ -32,7 +32,7 @@ namespace DepartmentManager.Server.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Role>> GetRole(int id)
         {
-            var role = await _repository.GetByIdAsync(id);
+            var role = await _roleRepository.GetByIdAsync(id);
 
             if (role == null)
             {
@@ -51,7 +51,7 @@ namespace DepartmentManager.Server.Controllers
                 return BadRequest(ModelState);
             }
 
-            var createdRole = await _repository.AddAsync(role);
+            var createdRole = await _roleRepository.AddAsync(role);
             return CreatedAtAction(nameof(GetRole), new { id = createdRole.RoleId }, createdRole);
         }
 
@@ -64,7 +64,7 @@ namespace DepartmentManager.Server.Controllers
                 return BadRequest();
             }
 
-            var existingRole = await _repository.GetByIdAsync(id);
+            var existingRole = await _roleRepository.GetByIdAsync(id);
             if (existingRole == null)
             {
                 return NotFound();
@@ -75,7 +75,7 @@ namespace DepartmentManager.Server.Controllers
                 return BadRequest(ModelState);
             }
 
-            await _repository.UpdateAsync(role);
+            await _roleRepository.UpdateAsync(role);
             return NoContent();
         }
 
@@ -83,13 +83,13 @@ namespace DepartmentManager.Server.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteRole(int id)
         {
-            var role = await _repository.GetByIdAsync(id);
+            var role = await _roleRepository.GetByIdAsync(id);
             if (role == null)
             {
                 return NotFound();
             }
 
-            await _repository.DeleteAsync(id);
+            await _roleRepository.DeleteAsync(id);
             return NoContent();
         }
     }

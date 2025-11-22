@@ -1,5 +1,7 @@
 using DepartmentManager.Server.Models;
 using DepartmentManager.Server.Reposistory;
+using DepartmentManager.Server.Reposistory.Implementation;
+using DepartmentManager.Server.Reposistory.Interface;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,6 +22,12 @@ builder.Services.AddScoped<IRepository<Role>, Repository<Role>>();
 builder.Services.AddScoped<IRepository<Affiliation>, Repository<Affiliation>>();
 builder.Services.AddScoped<IRepository<MemberAffiliation>, Repository<MemberAffiliation>>();
 builder.Services.AddScoped<IRepository<ApprovalRequest>, Repository<ApprovalRequest>>();
+builder.Services.AddScoped<ICityRepository, CityRepository>();
+builder.Services.AddScoped<IMemberRepository, MemberRepository>();
+builder.Services.AddScoped<IMemberAffiliationRepository, MemberAffiliationRepository>();
+builder.Services.AddScoped<IAffiliationRepository, AffiliationRepository>();
+builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+builder.Services.AddScoped<IApprovalRequestRepository, ApprovalRequestRepository>();
 
 var app = builder.Build();
 

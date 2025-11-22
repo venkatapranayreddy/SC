@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using DepartmentManager.Server.Models;
 using DepartmentManager.Server.Models.DTOs;
-using DepartmentManager.Server.Reposistory;
+using DepartmentManager.Server.Reposistory.Interface;
 
 namespace DepartmentManager.Server.Controllers
 {
@@ -10,22 +9,20 @@ namespace DepartmentManager.Server.Controllers
     [Route("api/[controller]")]
     public class MemberAffiliationController : ControllerBase
     {
-        private readonly IRepository<MemberAffiliation> _memberAffiliationRepository;
-        private readonly IRepository<Member> _memberRepository;
-        private readonly IRepository<ApprovalRequest> _approvalRequestRepository;
-        private readonly IRepository<City> _cityRepository;
-        private readonly IRepository<Affiliation> _affiliationRepository;
-        private readonly IRepository<Role> _roleRepository;
-        private readonly ApplicationDbContext _context;
+        private readonly IMemberAffiliationRepository _memberAffiliationRepository;
+        private readonly IMemberRepository _memberRepository;
+        private readonly IApprovalRequestRepository _approvalRequestRepository;
+        private readonly ICityRepository _cityRepository;
+        private readonly IAffiliationRepository _affiliationRepository;
+        private readonly IRoleRepository _roleRepository;
 
         public MemberAffiliationController(
-            IRepository<MemberAffiliation> memberAffiliationRepository,
-            IRepository<Member> memberRepository,
-            IRepository<ApprovalRequest> approvalRequestRepository,
-            IRepository<City> cityRepository,
-            IRepository<Affiliation> affiliationRepository,
-            IRepository<Role> roleRepository,
-            ApplicationDbContext context)
+            IMemberAffiliationRepository memberAffiliationRepository,
+            IMemberRepository memberRepository,
+            IApprovalRequestRepository approvalRequestRepository,
+            ICityRepository cityRepository,
+            IAffiliationRepository affiliationRepository,
+            IRoleRepository roleRepository)
         {
             _memberAffiliationRepository = memberAffiliationRepository;
             _memberRepository = memberRepository;
@@ -33,7 +30,6 @@ namespace DepartmentManager.Server.Controllers
             _cityRepository = cityRepository;
             _affiliationRepository = affiliationRepository;
             _roleRepository = roleRepository;
-            _context = context;
         }
 
         // GET: api/MemberAffiliation/pending-approvals/{approverId}
@@ -46,20 +42,17 @@ namespace DepartmentManager.Server.Controllers
                 return NotFound(new { message = "Approver not found." });
             }
 
-            var approvalRequests = await _approvalRequestRepository.FindAsync(ar =>
-                ar.RequestedToMemberId == approverId &&
-                ar.Status == RequestStatus.Pending &&
-                (requestType == null || ar.RequestType == requestType));
+            var approvalRequests = await _approvalRequestRepository.GetPendingRequestsForMemberAsync(approverId, requestType);
 
             var memberAffiliationIds = approvalRequests.Select(ar => ar.MemberAffiliationId).Distinct().ToList();
-            var memberAffiliations = await _memberAffiliationRepository.FindAsync(ma => memberAffiliationIds.Contains(ma.MemberAffiliationId));
+            var memberAffiliations = await _memberAffiliationRepository.GetByIdsAsync(memberAffiliationIds);
 
             var result = new List<MemberAffiliationDto>();
 
             foreach (var ma in memberAffiliations)
             {
                 var member = await _memberRepository.GetByIdAsync(ma.MemberId);
-                var city = await _cityRepository.GetByIdAsync(ma.CityId);
+                var city = await _cityRepository.GetCityByIdAsync(ma.CityId);
                 var affiliation = await _affiliationRepository.GetByIdAsync(ma.AffiliationId);
                 var role = await _roleRepository.GetByIdAsync(ma.RoleId);
                 var approverMember = ma.ApproverId.HasValue ? await _memberRepository.GetByIdAsync(ma.ApproverId.Value) : null;
@@ -120,7 +113,7 @@ namespace DepartmentManager.Server.Controllers
             }
 
             var member = await _memberRepository.GetByIdAsync(ma.MemberId);
-            var city = await _cityRepository.GetByIdAsync(ma.CityId);
+            var city = await _cityRepository.GetCityByIdAsync(ma.CityId);
             var affiliation = await _affiliationRepository.GetByIdAsync(ma.AffiliationId);
             var role = await _roleRepository.GetByIdAsync(ma.RoleId);
             var approver = ma.ApproverId.HasValue ? await _memberRepository.GetByIdAsync(ma.ApproverId.Value) : null;
@@ -175,10 +168,7 @@ namespace DepartmentManager.Server.Controllers
             }
 
             // Find the approval request
-            var approvalRequest = await _approvalRequestRepository.FirstOrDefaultAsync(ar =>
-                ar.MemberAffiliationId == dto.MemberAffiliationId &&
-                ar.RequestedToMemberId == approverId &&
-                ar.Status == RequestStatus.Pending);
+            var approvalRequest = await _approvalRequestRepository.GetPendingRequestAsync(dto.MemberAffiliationId, approverId);
 
             if (approvalRequest == null)
             {
@@ -204,11 +194,10 @@ namespace DepartmentManager.Server.Controllers
                     if (approver.ManagerId.HasValue)
                     {
                         // Manager approval request should already exist, but verify
-                        var managerRequest = await _approvalRequestRepository.FirstOrDefaultAsync(ar =>
-                            ar.MemberAffiliationId == dto.MemberAffiliationId &&
-                            ar.RequestType == RequestType.AffiliationApproval &&
-                            ar.RequestedToMemberId == approver.ManagerId.Value &&
-                            ar.Status == RequestStatus.Pending);
+                        var managerRequest = await _approvalRequestRepository.GetPendingRequestAsync(
+                            dto.MemberAffiliationId,
+                            approver.ManagerId.Value,
+                            RequestType.AffiliationApproval);
 
                         if (managerRequest == null)
                         {
@@ -270,9 +259,7 @@ namespace DepartmentManager.Server.Controllers
                 approvalRequest.RespondedAt = DateTime.UtcNow;
 
                 // Reject all pending approval requests for this member affiliation
-                var pendingRequests = await _approvalRequestRepository.FindAsync(ar =>
-                    ar.MemberAffiliationId == dto.MemberAffiliationId &&
-                    ar.Status == RequestStatus.Pending);
+                var pendingRequests = await _approvalRequestRepository.GetPendingRequestsByAffiliationAsync(dto.MemberAffiliationId);
 
                 foreach (var request in pendingRequests)
                 {

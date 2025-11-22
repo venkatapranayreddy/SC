@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using DepartmentManager.Server.Models;
-using DepartmentManager.Server.Reposistory;
+using DepartmentManager.Server.Reposistory.Interface;
 
 namespace DepartmentManager.Server.Controllers
 {
@@ -8,11 +8,11 @@ namespace DepartmentManager.Server.Controllers
     [Route("api/[controller]")]
     public class AffilationController : ControllerBase
     {
-        private readonly IRepository<Affiliation> _repository;
+        private readonly IAffiliationRepository _affiliationRepository;
 
-        public AffilationController(IRepository<Affiliation> repository)
+        public AffilationController(IAffiliationRepository affiliationRepository)
         {
-            _repository = repository;
+            _affiliationRepository = affiliationRepository;
         }
 
         // GET: api/Affilation
@@ -21,10 +21,10 @@ namespace DepartmentManager.Server.Controllers
         {
             if (cityId.HasValue)
             {
-                var affiliations = await _repository.FindAsync(a => a.CityId == cityId.Value);
+                var affiliations = await _affiliationRepository.GetByCityIdAsync(cityId.Value);
                 return Ok(affiliations);
             }
-            var allAffiliations = await _repository.GetAllAsync();
+            var allAffiliations = await _affiliationRepository.GetAllAsync();
             return Ok(allAffiliations);
         }
 
@@ -32,7 +32,7 @@ namespace DepartmentManager.Server.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Affiliation>> GetAffiliation(int id)
         {
-            var affiliation = await _repository.GetByIdAsync(id);
+            var affiliation = await _affiliationRepository.GetByIdAsync(id);
 
             if (affiliation == null)
             {
@@ -51,7 +51,7 @@ namespace DepartmentManager.Server.Controllers
                 return BadRequest(ModelState);
             }
 
-            var createdAffiliation = await _repository.AddAsync(affiliation);
+            var createdAffiliation = await _affiliationRepository.AddAsync(affiliation);
             return CreatedAtAction(nameof(GetAffiliation), new { id = createdAffiliation.AffiliationId }, createdAffiliation);
         }
 
@@ -64,7 +64,7 @@ namespace DepartmentManager.Server.Controllers
                 return BadRequest();
             }
 
-            var existingAffiliation = await _repository.GetByIdAsync(id);
+            var existingAffiliation = await _affiliationRepository.GetByIdAsync(id);
             if (existingAffiliation == null)
             {
                 return NotFound();
@@ -75,7 +75,7 @@ namespace DepartmentManager.Server.Controllers
                 return BadRequest(ModelState);
             }
 
-            await _repository.UpdateAsync(affiliation);
+            await _affiliationRepository.UpdateAsync(affiliation);
             return NoContent();
         }
 
@@ -83,13 +83,13 @@ namespace DepartmentManager.Server.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAffiliation(int id)
         {
-            var affiliation = await _repository.GetByIdAsync(id);
+            var affiliation = await _affiliationRepository.GetByIdAsync(id);
             if (affiliation == null)
             {
                 return NotFound();
             }
 
-            await _repository.DeleteAsync(id);
+            await _affiliationRepository.DeleteAsync(id);
             return NoContent();
         }
     }

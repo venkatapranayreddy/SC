@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using DepartmentManager.Server.Models;
 using DepartmentManager.Server.Models.DTOs;
-using DepartmentManager.Server.Reposistory;
+using DepartmentManager.Server.Reposistory.Interface;
 
 namespace DepartmentManager.Server.Controllers
 {
@@ -10,22 +9,20 @@ namespace DepartmentManager.Server.Controllers
     [Route("api/[controller]")]
     public class MemberController : ControllerBase
     {
-        private readonly IRepository<Member> _memberRepository;
-        private readonly IRepository<MemberAffiliation> _memberAffiliationRepository;
-        private readonly IRepository<ApprovalRequest> _approvalRequestRepository;
-        private readonly IRepository<City> _cityRepository;
-        private readonly IRepository<Affiliation> _affiliationRepository;
-        private readonly IRepository<Role> _roleRepository;
-        private readonly ApplicationDbContext _context;
+        private readonly IMemberRepository _memberRepository;
+        private readonly IMemberAffiliationRepository _memberAffiliationRepository;
+        private readonly IApprovalRequestRepository _approvalRequestRepository;
+        private readonly ICityRepository _cityRepository;
+        private readonly IAffiliationRepository _affiliationRepository;
+        private readonly IRoleRepository _roleRepository;
 
         public MemberController(
-            IRepository<Member> memberRepository,
-            IRepository<MemberAffiliation> memberAffiliationRepository,
-            IRepository<ApprovalRequest> approvalRequestRepository,
-            IRepository<City> cityRepository,
-            IRepository<Affiliation> affiliationRepository,
-            IRepository<Role> roleRepository,
-            ApplicationDbContext context)
+            IMemberRepository memberRepository,
+            IMemberAffiliationRepository memberAffiliationRepository,
+            IApprovalRequestRepository approvalRequestRepository,
+            ICityRepository cityRepository,
+            IAffiliationRepository affiliationRepository,
+            IRoleRepository roleRepository)
         {
             _memberRepository = memberRepository;
             _memberAffiliationRepository = memberAffiliationRepository;
@@ -33,7 +30,6 @@ namespace DepartmentManager.Server.Controllers
             _cityRepository = cityRepository;
             _affiliationRepository = affiliationRepository;
             _roleRepository = roleRepository;
-            _context = context;
         }
 
         // GET: api/Member
@@ -50,17 +46,14 @@ namespace DepartmentManager.Server.Controllers
         {
             var member = await _memberRepository.GetByIdAsync(id);
 
-            if (member == null)
-            {
-                return NotFound();
-            }
-
-            var memberAffiliations = await _memberAffiliationRepository.FindAsync(ma => ma.MemberId == id);
+            if (member == null) return NotFound();
+           
+            var memberAffiliations = await _memberAffiliationRepository.GetByMemberIdAsync(id);
             var affiliationDtos = new List<MemberAffiliationDto>();
 
             foreach (var ma in memberAffiliations)
             {
-                var city = await _cityRepository.GetByIdAsync(ma.CityId);
+                var city = await _cityRepository.GetCityByIdAsync(ma.CityId);
                 var affiliation = await _affiliationRepository.GetByIdAsync(ma.AffiliationId);
                 var role = await _roleRepository.GetByIdAsync(ma.RoleId);
                 var approver = ma.ApproverId.HasValue ? await _memberRepository.GetByIdAsync(ma.ApproverId.Value) : null;
@@ -112,7 +105,7 @@ namespace DepartmentManager.Server.Controllers
         [HttpGet("email/{email}")]
         public async Task<ActionResult<MemberDetailDto>> GetMemberByEmail(string email)
         {
-            var member = await _memberRepository.FirstOrDefaultAsync(m => m.Email == email);
+            var member = await _memberRepository.GetMemberByEmailAsync(email);
 
             if (member == null)
             {
@@ -138,7 +131,7 @@ namespace DepartmentManager.Server.Controllers
             }
 
             // Check if member already exists
-            var existingMember = await _memberRepository.FirstOrDefaultAsync(m => m.Email == dto.Email);
+            var existingMember = await _memberRepository.GetMemberByEmailAsync(dto.Email);
             Member member;
 
             if (existingMember == null)
@@ -242,7 +235,7 @@ namespace DepartmentManager.Server.Controllers
             // Get members who can be approvers for this affiliation
             // This would typically filter by role or other criteria
             // For now, return all active members
-            var approvers = await _memberRepository.FindAsync(m => m.Status == MemberStatus.Active);
+            var approvers = await _memberRepository.GetActiveMembersAsync();
             
             var result = approvers.Select(m => new
             {
@@ -266,12 +259,12 @@ namespace DepartmentManager.Server.Controllers
                 return NotFound();
             }
 
-            var memberAffiliations = await _memberAffiliationRepository.FindAsync(ma => ma.MemberId == memberId);
+            var memberAffiliations = await _memberAffiliationRepository.GetByMemberIdAsync(memberId);
             var affiliationDtos = new List<MemberAffiliationDto>();
 
             foreach (var ma in memberAffiliations)
             {
-                var city = await _cityRepository.GetByIdAsync(ma.CityId);
+                var city = await _cityRepository.GetCityByIdAsync(ma.CityId);
                 var affiliation = await _affiliationRepository.GetByIdAsync(ma.AffiliationId);
                 var role = await _roleRepository.GetByIdAsync(ma.RoleId);
                 var approver = ma.ApproverId.HasValue ? await _memberRepository.GetByIdAsync(ma.ApproverId.Value) : null;

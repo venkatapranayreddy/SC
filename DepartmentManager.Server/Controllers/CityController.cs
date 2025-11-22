@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using DepartmentManager.Server.Models;
-using DepartmentManager.Server.Reposistory;
+using DepartmentManager.Server.Reposistory.Interface;
 
 namespace DepartmentManager.Server.Controllers
 {
@@ -8,18 +8,18 @@ namespace DepartmentManager.Server.Controllers
     [Route("api/[controller]")]
     public class CityController : ControllerBase
     {
-        private readonly IRepository<City> _repository;
+        private readonly ICityRepository _cityRepository;
 
-        public CityController(IRepository<City> repository)
+        public CityController(ICityRepository cityRepository)
         {
-            _repository = repository;
+            _cityRepository = cityRepository;
         }
 
         // GET: api/City
         [HttpGet]
         public async Task<ActionResult<IEnumerable<City>>> GetCities()
         {
-            var cities = await _repository.GetAllAsync();
+            var cities = await _cityRepository.GetAllCitiesAsync();
             return Ok(cities);
         }
 
@@ -27,7 +27,7 @@ namespace DepartmentManager.Server.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<City>> GetCity(int id)
         {
-            var city = await _repository.GetByIdAsync(id);
+            var city = await _cityRepository.GetCityByIdAsync(id);
 
             if (city == null)
             {
@@ -46,7 +46,7 @@ namespace DepartmentManager.Server.Controllers
                 return BadRequest(ModelState);
             }
 
-            var createdCity = await _repository.AddAsync(city);
+            var createdCity = await _cityRepository.AddCityAsync(city);
             return CreatedAtAction(nameof(GetCity), new { id = createdCity.CityId }, createdCity);
         }
 
@@ -59,7 +59,7 @@ namespace DepartmentManager.Server.Controllers
                 return BadRequest();
             }
 
-            var existingCity = await _repository.GetByIdAsync(id);
+            var existingCity = await _cityRepository.GetCityByIdAsync(id);
             if (existingCity == null)
             {
                 return NotFound();
@@ -70,7 +70,7 @@ namespace DepartmentManager.Server.Controllers
                 return BadRequest(ModelState);
             }
 
-            await _repository.UpdateAsync(city);
+            await _cityRepository.UpdateAsync(city);
             return NoContent();
         }
 
@@ -78,13 +78,13 @@ namespace DepartmentManager.Server.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCity(int id)
         {
-            var city = await _repository.GetByIdAsync(id);
+            var city = await _cityRepository.GetCityByIdAsync(id);
             if (city == null)
             {
                 return NotFound();
             }
 
-            await _repository.DeleteAsync(id);
+            await _cityRepository.DeleteAsync(id);
             return NoContent();
         }
     }
